@@ -6,7 +6,6 @@
     <title>InventaJur - Sistem Inventaris Jurusan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Library untuk PDF dan Chart -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -54,7 +53,6 @@
 
     <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-2xl">
 
-        <!-- ===== HALAMAN SPLASH ===== -->
         <main id="splashPage" class="page flex flex-col items-center justify-center min-h-screen p-6 bg-primary">
             <div class="text-center text-white mb-12 animate-[fadeIn_1s_ease-in-out]">
                 <i data-lucide="archive" class="w-24 h-24 mx-auto text-secondary"></i>
@@ -71,22 +69,18 @@
             </div>
         </main>
 
-        <!-- ===== HALAMAN LOGIN & REGISTRASI (TEMPLATE) ===== -->
         <main id="authPage" class="page hidden min-h-screen p-6 bg-gray-50">
              <button class="back-to-splash-btn flex items-center text-primary font-semibold mb-6 hover:underline">
                 <i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i>
                 Kembali
             </button>
             <div id="authContent">
-                <!-- Konten login/registrasi dinamis akan disuntikkan di sini -->
-            </div>
+                </div>
         </main>
 
-        <!-- ===== HALAMAN PENGGUNA (Mahasiswa, Dosen, dll) ===== -->
         <main id="userHomePage" class="page hidden">
             <div id="userPageContent" class="pb-20">
-                <!-- Konten akan dirender oleh JS -->
-            </div>
+                </div>
             <nav id="userBottomNav" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around items-center h-16 shadow-lg">
                 <a href="#" data-page="home" class="user-nav-link text-primary flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="home" class="w-6 h-6"></i><span class="text-xs font-bold">Beranda</span></a>
                 <a href="#" data-page="borrow" class="user-nav-link text-gray-500 flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="shopping-basket" class="w-6 h-6"></i><span class="text-xs font-medium">Pinjam</span></a>
@@ -96,7 +90,6 @@
             </nav>
         </main>
         
-        <!-- ===== HALAMAN ADMIN ===== -->
         <main id="adminDashboardPage" class="page hidden">
             <header class="bg-primary text-white p-4 flex justify-between items-center sticky top-0 z-10 shadow-md">
                 <div><h1 class="text-xl font-bold">Dashboard Admin</h1><p id="adminName" class="text-sm text-yellow-200"></p></div>
@@ -120,7 +113,6 @@
             </div>
         </main>
         
-        <!-- MODALS -->
         <div id="modalContainer"></div>
 
     </div>
@@ -147,6 +139,10 @@
             let borrowings = [];
             
             // ===== FUNGSI INTI APLIKASI =====
+            
+            // Fungsi untuk membuat ID yang lebih unik untuk menghindari bentrok
+            const generateUniqueId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
             const showPage = (pageName) => {
                 Object.values(pages).forEach(p => p.classList.add('hidden'));
                 if (pages[pageName]) pages[pageName].classList.remove('hidden');
@@ -209,6 +205,7 @@
                 items = JSON.parse(localStorage.getItem('inventajur_items')) || [];
                 borrowings = JSON.parse(localStorage.getItem('inventajur_borrowings')) || [];
 
+                // Jika tidak ada admin, buat admin default dan beberapa item contoh
                 if (!users.some(u => u.type === 'admin')) {
                     users.push({ id: 'admin01', type: 'admin', name: 'Admin Utama', username: 'admin', password: 'admin' });
                     if(items.length === 0){
@@ -256,7 +253,7 @@
                 <h2 class="text-3xl font-bold text-primary mb-2">Buat Akun Baru</h2>
                 <p class="text-gray-600 mb-6">Pilih tipe akun yang ingin Anda daftarkan.</p>
                 <div class="mb-5"><label for="auth-user-type" class="block text-sm font-medium text-gray-700 mb-1">Saya ingin mendaftar sebagai:</label>
-                    <select id="auth-user-type" class="w-full p-3 border border-gray-300 rounded-lg bg-white"><option value="">-- Pilih Tipe Akun --</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen</option><option value="pegawai">Pegawai</option><option value="admin">Admin</option></select>
+                    <select id="auth-user-type" class="w-full p-3 border border-gray-300 rounded-lg bg-white"><option value="">-- Pilih Tipe Akun --</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen</option><option value="pegawai">Pegawai</option></select>
                 </div><div id="auth-form-container"></div>`;
             
             const renderAuthFormFields = (isLogin, userType) => {
@@ -309,7 +306,7 @@
                     if (users.some(u => u.nim === identifier || u.nip === identifier || u.username === identifier)) {
                         return showNotification('Registrasi Gagal', `${userType === 'mahasiswa' ? 'NIM' : (userType === 'admin' ? 'Username' : 'NIP')} sudah terdaftar.`, false);
                     }
-                    const newUser = { id: Date.now().toString(), type: userType, password, name: nama };
+                    const newUser = { id: generateUniqueId(), type: userType, password, name: nama };
                     if (userType === 'mahasiswa') Object.assign(newUser, { nim: identifier, angkatan, prodi });
                     else if (userType === 'dosen' || userType === 'pegawai') Object.assign(newUser, { nip: identifier, jabatan });
                     else Object.assign(newUser, { username: identifier });
@@ -431,7 +428,7 @@
             };
             
             const handleBorrow = (itemId) => {
-                const item = items.find(i => i.id == itemId);
+                const item = items.find(i => i.id === parseInt(itemId));
                 if (!item) return;
 
                 let purposeHtml = '';
@@ -457,6 +454,15 @@
                             </form>
                         </div>
                     </div>`);
+                
+                // --- Peningkatan UX: Isi tanggal otomatis ---
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Sesuaikan dengan timezone lokal
+                document.getElementById('borrowDate').value = now.toISOString().slice(0, 16);
+
+                const returnTime = new Date(now.getTime() + 3 * 60 * 60 * 1000); // Set default 3 jam
+                document.getElementById('returnDate').value = returnTime.toISOString().slice(0, 16);
+                
                 const purposeSelector = document.getElementById('borrowPurposeSelector');
                 if (purposeSelector) {
                     purposeSelector.onchange = (e) => renderBorrowDetailsFields(e.target.value, userType);
@@ -485,7 +491,7 @@
 
                 if (quantity > item.available) return showNotification('Gagal', `Jumlah peminjaman melebihi stok tersedia (${item.available}).`, false);
 
-                const newBorrowing = { id: Date.now(), itemId, quantity, userId: currentUser.id, borrowDate: document.getElementById('borrowDate').value, returnDate: document.getElementById('returnDate').value, status: 'dipinjam' };
+                const newBorrowing = { id: generateUniqueId(), itemId, quantity, userId: currentUser.id, borrowDate: document.getElementById('borrowDate').value, returnDate: document.getElementById('returnDate').value, status: 'dipinjam' };
                 const userType = currentUser.type;
                 if (userType === 'mahasiswa' || userType === 'dosen') {
                     const purpose = document.getElementById('borrowPurposeSelector').value;
@@ -503,7 +509,7 @@
             };
 
             const showReturnForm = (borrowId) => {
-                const borrowing = borrowings.find(b => b.id == borrowId);
+                const borrowing = borrowings.find(b => b.id === borrowId);
                 const item = items.find(i => i.id === borrowing.itemId);
                 showModal(`
                      <div id="returnModal" class="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4 overflow-y-auto opacity-0 transition-opacity duration-300">
@@ -523,7 +529,7 @@
             
             const handleReturnSubmit = (e) => {
                 const { returnBorrowId, returnCondition, returnNotes, returnProof } = Object.fromEntries(new FormData(e.target));
-                const borrowing = borrowings.find(b => b.id == returnBorrowId);
+                const borrowing = borrowings.find(b => b.id === returnBorrowId);
                 if (borrowing) {
                     Object.assign(borrowing, { status: 'menunggu_validasi', userReturnDate: new Date().toISOString(), returnCondition, returnNotes, returnProof });
                     saveData();
@@ -603,7 +609,7 @@
                 
                 return borrowings.filter(b => 
                     (!filters.status || b.status === filters.status) &&
-                    (!filters.item || b.itemId == filters.item) &&
+                    (!filters.item || b.itemId === parseInt(filters.item)) &&
                     (!filters.date || new Date(b.borrowDate).toISOString().slice(0, 10) === filters.date) &&
                     (!filters.userType || users.find(u => u.id === b.userId)?.type === filters.userType)
                 ).sort((a, b) => new Date(b.borrowDate) - new Date(a.borrowDate));
@@ -622,10 +628,11 @@
                     const [statusText, statusClass] = statuses[b.status];
                     return `<div class="bg-white p-3 rounded-2xl shadow-sm border"><div class="flex justify-between items-center"><div><p class="font-semibold text-primary">${item.name}</p><p class="text-xs text-gray-600">${user.name} - <span class="capitalize">${user.type}</span></p><p class="text-xs text-gray-500">${new Date(b.borrowDate).toLocaleDateString('id-ID')}</p></div><div class="flex flex-col items-end space-y-2"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${statusText}</span><button data-borrow-id="${b.id}" class="view-detail-btn text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300">Detail</button></div></div></div>`
                 }).join('') : '<p class="text-center text-gray-500 mt-4">Tidak ada riwayat yang cocok.</p>';
+                lucide.createIcons();
             };
 
             const showBorrowingDetails = (borrowId) => {
-                const b = borrowings.find(br => br.id == borrowId);
+                const b = borrowings.find(br => br.id === borrowId);
                 const item = items.find(i => i.id === b.itemId);
                 const user = users.find(u => u.id === b.userId);
                 
@@ -675,7 +682,7 @@
                             <td>${user.name}</td>
                             <td>${user.nim || user.nip}</td>
                             <td>${item.name}</td>
-                            <td>${b.status}</td>
+                            <td style="text-transform: capitalize;">${b.status.replace('_', ' ')}</td>
                         </tr>
                     `;
                 }).join('');
@@ -725,15 +732,21 @@
             };
 
             // ===== EVENT LISTENERS =====
+            // Setup event listener terpusat untuk mengelola semua interaksi
             const setupEventListeners = () => {
                 document.getElementById('goToLoginBtn').addEventListener('click', () => renderAuthPage('login'));
                 document.getElementById('goToRegisterBtn').addEventListener('click', () => renderAuthPage('register'));
                 document.addEventListener('closeModal', closeModal);
 
                 app.addEventListener('change', e => {
+                    // Render form login/register dinamis berdasarkan tipe user
                     if (e.target.id === 'auth-user-type') {
                         const isLogin = e.target.closest('#authContent').querySelector('h2').textContent.includes('Login');
                         document.getElementById('auth-form-container').innerHTML = renderAuthFormFields(isLogin, e.target.value);
+                    }
+                    // Render ulang riwayat admin saat filter diubah
+                    if (e.target.closest('#adminContentHistory')) {
+                        renderAdminBorrowingHistory();
                     }
                 });
                 
@@ -744,10 +757,13 @@
                     if (e.target.id === 'returnForm') handleReturnSubmit(e);
                     if (e.target.id === 'addItemForm') {
                         const { itemName, itemTotal, itemCompleteness, itemDescription } = Object.fromEntries(new FormData(e.target));
-                        items.push({ id: Date.now(), name: itemName, total: parseInt(itemTotal), available: parseInt(itemTotal), completeness: itemCompleteness, description: itemDescription });
+                        items.push({ id: generateUniqueId(), name: itemName, total: parseInt(itemTotal), available: parseInt(itemTotal), completeness: itemCompleteness, description: itemDescription });
                         saveData();
                         showNotification('Berhasil', 'Alat baru telah ditambahkan.');
                         e.target.reset();
+                        // Perbarui konten tab 'manage' di latar belakang agar data selalu baru
+                        document.getElementById('adminContentManage').innerHTML = renderAdminManage();
+                        lucide.createIcons();
                     }
                 });
 
@@ -762,30 +778,41 @@
                     if (button.classList.contains('return-item-btn')) showReturnForm(button.dataset.borrowId);
                     if (button.id === 'userLogoutBtn' || button.id === 'adminLogoutBtn') logout();
                     
-                    // Admin clicks
-                    if (button.closest('#adminDashboardPage')) {
-                        if(button.closest('.admin-tab-link')) renderAdminPage(button.closest('.admin-tab-link').dataset.tab);
-                        if(button.classList.contains('delete-item-btn')) showConfirm('Hapus Alat?', 'Anda yakin ingin menghapus alat ini?', () => {
-                            items = items.filter(i => i.id != button.dataset.itemId);
-                            saveData(); renderAdminPage('manage');
-                        });
-                        if(button.classList.contains('validate-return-btn')) {
-                            const borrowing = borrowings.find(b => b.id == button.dataset.borrowId);
+                    // --- Event Handler untuk Halaman Admin ---
+                    const adminDashboard = button.closest('#adminDashboardPage');
+                    if (adminDashboard) {
+                        const adminTabLink = button.closest('.admin-tab-link');
+                        if (adminTabLink) renderAdminPage(adminTabLink.dataset.tab);
+
+                        if (button.classList.contains('delete-item-btn')) {
+                            const itemId = parseInt(button.dataset.itemId);
+                            showConfirm('Hapus Alat?', 'Anda yakin ingin menghapus alat ini?', () => {
+                                items = items.filter(i => i.id !== itemId);
+                                saveData(); 
+                                renderAdminPage('manage');
+                            });
+                        }
+
+                        if (button.classList.contains('validate-return-btn')) {
+                            const borrowId = button.dataset.borrowId;
+                            const borrowing = borrowings.find(b => b.id === borrowId);
                             const item = items.find(i => i.id === borrowing.itemId);
                             borrowing.status = 'selesai';
                             borrowing.adminValidationDate = new Date().toISOString();
-                            if(borrowing.returnCondition !== 'Hilang' && borrowing.returnCondition !== 'Rusak Berat') item.available += borrowing.quantity;
+                            if(borrowing.returnCondition !== 'Hilang' && borrowing.returnCondition !== 'Rusak Berat') {
+                                item.available += borrowing.quantity;
+                            }
                             saveData();
                             showNotification('Berhasil', 'Pengembalian telah divalidasi.');
                             renderAdminPage('validation');
                         }
-                        if (button.classList.contains('view-detail-btn')) showBorrowingDetails(button.dataset.borrowId);
+
+                        if (button.classList.contains('view-detail-btn')) {
+                            showBorrowingDetails(button.dataset.borrowId);
+                        }
+                        
                         if (button.id === 'printReportBtn') downloadHistoryAsPDF();
                     }
-                });
-                
-                app.addEventListener('change', e => {
-                    if (e.target.closest('#adminContentHistory')) renderAdminBorrowingHistory();
                 });
             };
             
@@ -801,4 +828,3 @@
     </script>
 </body>
 </html>
-
