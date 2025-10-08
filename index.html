@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InventaJur - Sistem Inventaris Jurusan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Library untuk PDF dan Chart -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Menggunakan font Inter yang modern dan bersih */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s;
+        }
+        /* Custom scrollbar untuk tampilan yang lebih rapi */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #800000; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a00000; }
+        .hidden { display: none; }
+        .page {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    <script>
+        // Konfigurasi warna custom untuk Tailwind CSS
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#800000', // Maroon
+                        'primary-dark': '#660000',
+                        secondary: '#FFD700', // Kuning (Gold)
+                        'secondary-dark': '#E6C200',
+                    },
+                     borderRadius: {
+                        '2xl': '1rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-2xl">
+
+        <!-- ===== HALAMAN SPLASH ===== -->
+        <main id="splashPage" class="page flex flex-col items-center justify-center min-h-screen p-6 bg-primary">
+            <div class="text-center text-white mb-12 animate-[fadeIn_1s_ease-in-out]">
+                <i data-lucide="archive" class="w-24 h-24 mx-auto text-secondary"></i>
+                <h1 class="text-4xl font-bold mt-4">InventaJur</h1>
+                <p class="text-lg text-yellow-200">Sistem Inventaris Peralatan Jurusan</p>
+            </div>
+            <div class="w-full space-y-4">
+                 <button id="goToLoginBtn" class="w-full bg-white text-primary font-bold py-4 px-4 rounded-lg text-lg shadow-lg hover:bg-gray-100 transition-all duration-300 transform hover:scale-105">
+                    Login
+                </button>
+                 <button id="goToRegisterBtn" class="w-full bg-secondary text-primary font-bold py-4 px-4 rounded-lg text-lg shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-105">
+                    Registrasi
+                </button>
+            </div>
+        </main>
+
+        <!-- ===== HALAMAN LOGIN & REGISTRASI (TEMPLATE) ===== -->
+        <main id="authPage" class="page hidden min-h-screen p-6 bg-gray-50">
+             <button class="back-to-splash-btn flex items-center text-primary font-semibold mb-6 hover:underline">
+                <i data-lucide="arrow-left" class="w-5 h-5 mr-2"></i>
+                Kembali
+            </button>
+            <div id="authContent">
+                <!-- Konten login/registrasi dinamis akan disuntikkan di sini -->
+            </div>
+        </main>
+
+        <!-- ===== HALAMAN PENGGUNA (Mahasiswa, Dosen, dll) ===== -->
+        <main id="userHomePage" class="page hidden">
+            <div id="userPageContent" class="pb-20">
+                <!-- Konten akan dirender oleh JS -->
+            </div>
+            <nav id="userBottomNav" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-200 flex justify-around items-center h-16 shadow-lg">
+                <a href="#" data-page="home" class="user-nav-link text-primary flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="home" class="w-6 h-6"></i><span class="text-xs font-bold">Beranda</span></a>
+                <a href="#" data-page="borrow" class="user-nav-link text-gray-500 flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="shopping-basket" class="w-6 h-6"></i><span class="text-xs font-medium">Pinjam</span></a>
+                <a href="#" data-page="return" class="user-nav-link text-gray-500 flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="undo-2" class="w-6 h-6"></i><span class="text-xs font-medium">Kembalikan</span></a>
+                <a href="#" data-page="history" class="user-nav-link text-gray-500 flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="history" class="w-6 h-6"></i><span class="text-xs font-medium">Riwayat</span></a>
+                <a href="#" data-page="profile" class="user-nav-link text-gray-500 flex flex-col items-center justify-center w-1/5 transition-colors"><i data-lucide="user-circle" class="w-6 h-6"></i><span class="text-xs font-medium">Profil</span></a>
+            </nav>
+        </main>
+        
+        <!-- ===== HALAMAN ADMIN ===== -->
+        <main id="adminDashboardPage" class="page hidden">
+            <header class="bg-primary text-white p-4 flex justify-between items-center sticky top-0 z-10 shadow-md">
+                <div><h1 class="text-xl font-bold">Dashboard Admin</h1><p id="adminName" class="text-sm text-yellow-200"></p></div>
+                <button id="adminLogoutBtn" class="p-2 rounded-full hover:bg-primary-dark"><i data-lucide="log-out" class="w-5 h-5"></i></button>
+            </header>
+            
+            <div class="border-b border-gray-200 sticky top-[72px] bg-white z-10">
+                <nav class="flex justify-around -mb-px" aria-label="Tabs">
+                    <a href="#" data-tab="input" class="admin-tab-link w-1/4 py-3 text-center font-medium text-xs text-primary border-b-2 border-primary"><i data-lucide="plus-circle" class="mx-auto w-5 h-5 mb-1"></i>Input</a>
+                    <a href="#" data-tab="manage" class="admin-tab-link w-1/4 py-3 text-center font-medium text-xs text-gray-500 border-b-2 border-transparent"><i data-lucide="edit" class="mx-auto w-5 h-5 mb-1"></i>Alat</a>
+                    <a href="#" data-tab="validation" class="admin-tab-link w-1/4 py-3 text-center font-medium text-xs text-gray-500 border-b-2 border-transparent relative"><i data-lucide="check-square" class="mx-auto w-5 h-5 mb-1"></i>Validasi<span id="validation-badge" class="hidden absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"></span></a>
+                    <a href="#" data-tab="history" class="admin-tab-link w-1/4 py-3 text-center font-medium text-xs text-gray-500 border-b-2 border-transparent"><i data-lucide="history" class="mx-auto w-5 h-5 mb-1"></i>Riwayat</a>
+                </nav>
+            </div>
+            
+            <div class="p-4 pb-20">
+                <div id="adminContentInput" class="admin-content-panel"></div>
+                <div id="adminContentManage" class="admin-content-panel hidden"></div>
+                <div id="adminContentValidation" class="admin-content-panel hidden"></div>
+                <div id="adminContentHistory" class="admin-content-panel hidden"></div>
+            </div>
+        </main>
+        
+        <!-- MODALS -->
+        <div id="modalContainer"></div>
+
+    </div>
+
+    <script>
+        // Inisialisasi Lucide Icons
+        lucide.createIcons();
+        const { jsPDF } = window.jspdf;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // ===== ELEMEN UTAMA & STATE =====
+            const app = document.getElementById('app');
+            const pages = {
+                splash: document.getElementById('splashPage'),
+                auth: document.getElementById('authPage'),
+                userHome: document.getElementById('userHomePage'),
+                adminDashboard: document.getElementById('adminDashboardPage')
+            };
+            const modalContainer = document.getElementById('modalContainer');
+
+            let currentUser = null;
+            let users = [];
+            let items = [];
+            let borrowings = [];
+            
+            // ===== FUNGSI INTI APLIKASI =====
+            const showPage = (pageName) => {
+                Object.values(pages).forEach(p => p.classList.add('hidden'));
+                if (pages[pageName]) pages[pageName].classList.remove('hidden');
+            };
+            
+            const showModal = (content) => {
+                modalContainer.innerHTML = content;
+                lucide.createIcons();
+                const modalElement = modalContainer.firstElementChild;
+                if(modalElement) {
+                    setTimeout(() => modalElement.classList.remove('opacity-0'), 10);
+                }
+            };
+            
+            const closeModal = () => {
+                const modalElement = modalContainer.firstElementChild;
+                 if(modalElement) {
+                    modalElement.classList.add('opacity-0');
+                    setTimeout(() => modalContainer.innerHTML = '', 300);
+                }
+            };
+
+            const showNotification = (title, message, isSuccess = true) => {
+                const icon = isSuccess 
+                    ? `<div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100"><i data-lucide="check" class="h-6 w-6 text-green-600"></i></div>`
+                    : `<div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><i data-lucide="x" class="h-6 w-6 text-red-600"></i></div>`;
+                showModal(`
+                    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+                        <div class="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
+                            ${icon}<h3 class="text-lg font-medium text-gray-900 mt-2">${title}</h3>
+                            <p class="text-sm text-gray-500 mt-1">${message}</p>
+                            <button onclick="document.dispatchEvent(new CustomEvent('closeModal'))" class="mt-4 w-full justify-center rounded-lg shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-primary-dark">Tutup</button>
+                        </div>
+                    </div>`);
+            };
+
+            const showConfirm = (title, message, onConfirm) => {
+                 showModal(`
+                    <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+                        <div class="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full text-center">
+                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100"><i data-lucide="alert-triangle" class="h-6 w-6 text-red-600"></i></div>
+                            <h3 class="text-lg font-medium text-gray-900 mt-4">${title}</h3><p class="text-sm text-gray-500 mt-2">${message}</p>
+                            <div class="mt-5 grid grid-cols-2 gap-3">
+                                <button id="confirmBtn" class="w-full justify-center rounded-lg shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700">Ya</button>
+                                <button onclick="document.dispatchEvent(new CustomEvent('closeModal'))" class="w-full justify-center rounded-lg border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50">Batal</button>
+                            </div>
+                        </div>
+                    </div>`);
+                document.getElementById('confirmBtn').onclick = () => { onConfirm(); closeModal(); };
+            };
+
+            const saveData = () => {
+                localStorage.setItem('inventajur_users', JSON.stringify(users));
+                localStorage.setItem('inventajur_items', JSON.stringify(items));
+                localStorage.setItem('inventajur_borrowings', JSON.stringify(borrowings));
+            };
+
+            const loadData = () => {
+                users = JSON.parse(localStorage.getItem('inventajur_users')) || [];
+                items = JSON.parse(localStorage.getItem('inventajur_items')) || [];
+                borrowings = JSON.parse(localStorage.getItem('inventajur_borrowings')) || [];
+
+                if (!users.some(u => u.type === 'admin')) {
+                    users.push({ id: 'admin01', type: 'admin', name: 'Admin Utama', username: 'admin', password: 'admin' });
+                    if(items.length === 0){
+                         items.push(
+                            { id: 1, name: 'Proyektor LCD', total: 5, available: 5, completeness: 'Kabel Power, Kabel HDMI, Tas', description: 'Proyektor Epson EB-X450' },
+                            { id: 2, name: 'Stop Kontak', total: 10, available: 10, completeness: 'Panjang kabel 5 meter', description: 'Uticon 4 lubang' },
+                            { id: 3, name: 'Konektor HDMI to VGA', total: 8, available: 8, completeness: 'Adapter only', description: 'Konverter aktif' }
+                        );
+                    }
+                    saveData();
+                }
+            };
+            
+            const checkSession = () => {
+                const userInSession = sessionStorage.getItem('inventajur_currentUser');
+                if (userInSession) {
+                    currentUser = JSON.parse(userInSession);
+                    if (currentUser.type === 'admin') {
+                        showPage('adminDashboard');
+                        renderAdminDashboard();
+                    } else {
+                        showPage('userHome');
+                        renderUserPage('home');
+                    }
+                } else {
+                    showPage('splash');
+                }
+            };
+            
+            // ===== AUTENTIKASI & FORM DINAMIS =====
+            const renderAuthPage = (type) => {
+                const content = type === 'login' ? renderLoginForm() : renderRegisterForm();
+                document.getElementById('authContent').innerHTML = content;
+                showPage('auth');
+            };
+            
+            const renderLoginForm = () => `
+                <h2 class="text-3xl font-bold text-primary mb-2">Login Akun</h2>
+                <p class="text-gray-600 mb-6">Pilih tipe akun Anda untuk melanjutkan.</p>
+                <div class="mb-5"><label for="auth-user-type" class="block text-sm font-medium text-gray-700 mb-1">Saya ingin login sebagai:</label>
+                    <select id="auth-user-type" class="w-full p-3 border border-gray-300 rounded-lg bg-white"><option value="">-- Pilih Tipe Akun --</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen / Pegawai</option><option value="admin">Admin</option></select>
+                </div><div id="auth-form-container"></div>`;
+                
+            const renderRegisterForm = () => `
+                <h2 class="text-3xl font-bold text-primary mb-2">Buat Akun Baru</h2>
+                <p class="text-gray-600 mb-6">Pilih tipe akun yang ingin Anda daftarkan.</p>
+                <div class="mb-5"><label for="auth-user-type" class="block text-sm font-medium text-gray-700 mb-1">Saya ingin mendaftar sebagai:</label>
+                    <select id="auth-user-type" class="w-full p-3 border border-gray-300 rounded-lg bg-white"><option value="">-- Pilih Tipe Akun --</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen</option><option value="pegawai">Pegawai</option><option value="admin">Admin</option></select>
+                </div><div id="auth-form-container"></div>`;
+            
+            const renderAuthFormFields = (isLogin, userType) => {
+                let identifierField = '', specificFields = '';
+                if (userType === 'mahasiswa') {
+                    identifierField = `<label class="block text-sm font-medium">NIM</label><input type="text" name="identifier" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required>`;
+                    if (!isLogin) specificFields = `<div><label class="block text-sm font-medium">Nama Lengkap</label><input type="text" name="nama" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>
+                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium">Angkatan</label><input type="number" name="angkatan" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>
+                        <div><label class="block text-sm font-medium">Program Studi</label><input type="text" name="prodi" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div></div>`;
+                } else if (userType === 'dosen' || userType === 'pegawai') {
+                    identifierField = `<label class="block text-sm font-medium">NIP</label><input type="text" name="identifier" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required>`;
+                    if (!isLogin) specificFields = `<div><label class="block text-sm font-medium">Nama Lengkap</label><input type="text" name="nama" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>
+                        <div><label class="block text-sm font-medium">${userType === 'dosen' ? 'Jabatan' : 'Bidang Kerja'}</label><input type="text" name="jabatan" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>`;
+                } else if (userType === 'admin') {
+                    identifierField = `<label class="block text-sm font-medium">Username</label><input type="text" name="identifier" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required>`;
+                    if (!isLogin) specificFields = `<div><label class="block text-sm font-medium">Nama Lengkap</label><input type="text" name="nama" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>`;
+                }
+
+                return !identifierField ? '' : `
+                    <form id="auth-form" class="space-y-4">
+                        ${specificFields}<div>${identifierField}</div>
+                        <div><label class="block text-sm font-medium">Password</label><input type="password" name="password" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>
+                        ${!isLogin ? `<div><label class="block text-sm font-medium">Konfirmasi Password</label><input type="password" name="confirmPassword" class="mt-1 w-full p-3 border border-gray-300 rounded-lg" required></div>` : ''}
+                        <button type="submit" class="w-full bg-primary text-white font-bold py-3 px-4 rounded-lg hover:bg-primary-dark mt-6">${isLogin ? 'Login' : 'Registrasi'}</button>
+                    </form>`;
+            };
+
+            const handleAuth = (e, isLogin) => {
+                e.preventDefault();
+                const userType = document.getElementById('auth-user-type').value;
+                const { identifier, password, confirmPassword, nama, angkatan, prodi, jabatan } = Object.fromEntries(new FormData(e.target));
+                
+                if (!isLogin && password !== confirmPassword) {
+                    return showNotification('Registrasi Gagal', 'Password dan konfirmasi password tidak cocok.', false);
+                }
+
+                if (isLogin) {
+                    const foundUser = users.find(u => {
+                        let typeMatch = (userType === 'dosen') ? (u.type === 'dosen' || u.type === 'pegawai') : (u.type === userType);
+                        const idMatch = u.nim === identifier || u.nip === identifier || u.username === identifier;
+                        return typeMatch && idMatch && u.password === password;
+                    });
+                    if (foundUser) {
+                        currentUser = foundUser;
+                        sessionStorage.setItem('inventajur_currentUser', JSON.stringify(currentUser));
+                        if (currentUser.type === 'admin') { showPage('adminDashboard'); renderAdminDashboard(); } 
+                        else { showPage('userHome'); renderUserPage('home'); }
+                    } else { showNotification('Login Gagal', 'Tipe akun, identifier, atau password salah.', false); }
+                } else { // Register
+                    if (users.some(u => u.nim === identifier || u.nip === identifier || u.username === identifier)) {
+                        return showNotification('Registrasi Gagal', `${userType === 'mahasiswa' ? 'NIM' : (userType === 'admin' ? 'Username' : 'NIP')} sudah terdaftar.`, false);
+                    }
+                    const newUser = { id: Date.now().toString(), type: userType, password, name: nama };
+                    if (userType === 'mahasiswa') Object.assign(newUser, { nim: identifier, angkatan, prodi });
+                    else if (userType === 'dosen' || userType === 'pegawai') Object.assign(newUser, { nip: identifier, jabatan });
+                    else Object.assign(newUser, { username: identifier });
+                    users.push(newUser);
+                    saveData();
+                    showNotification('Registrasi Berhasil', 'Akun Anda telah dibuat. Silakan login.');
+                    renderAuthPage('login');
+                }
+            };
+            
+            const logout = () => {
+                currentUser = null;
+                sessionStorage.removeItem('inventajur_currentUser');
+                showPage('splash');
+            };
+
+            // ===== FUNGSI RENDER TAMPILAN PENGGUNA =====
+            const renderUserPage = (page) => {
+                document.querySelectorAll('.user-nav-link').forEach(link => {
+                    link.classList.toggle('text-primary', link.dataset.page === page);
+                    link.classList.toggle('text-gray-500', link.dataset.page !== page);
+                    link.querySelector('span').classList.toggle('font-bold', link.dataset.page === page);
+                    link.querySelector('span').classList.toggle('font-medium', link.dataset.page !== page);
+                });
+                
+                const pages = {
+                    home: renderUserHomePage,
+                    borrow: renderUserBorrowPage,
+                    return: renderUserReturnPage,
+                    history: renderUserHistoryPage,
+                    profile: renderUserProfilePage,
+                };
+                document.getElementById('userPageContent').innerHTML = pages[page] ? pages[page]() : '';
+                lucide.createIcons();
+            };
+
+            const renderUserHomePage = () => {
+                const activeBorrows = borrowings.filter(b => b.userId === currentUser.id && b.status === 'dipinjam').slice(0, 3);
+                return `
+                    <header class="bg-primary text-white p-5 sticky top-0 z-10 shadow-md rounded-b-3xl">
+                        <div><p class="text-md text-yellow-200">Selamat Datang,</p><h1 class="text-2xl font-bold">${currentUser.name}</h1></div>
+                    </header>
+                    <div class="p-4 space-y-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <button data-page="borrow" class="nav-button-action bg-secondary p-6 rounded-2xl text-center text-primary font-bold shadow-lg hover:bg-secondary-dark transition-transform transform hover:scale-105">
+                                <i data-lucide="shopping-basket" class="w-12 h-12 mx-auto mb-2"></i><span>Pinjam Alat</span></button>
+                            <button data-page="return" class="nav-button-action bg-white p-6 rounded-2xl text-center text-primary font-bold shadow-lg hover:bg-gray-50 transition-transform transform hover:scale-105">
+                                <i data-lucide="undo-2" class="w-12 h-12 mx-auto mb-2"></i><span>Kembalikan</span></button>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Peminjaman Aktif</h3>
+                            <div class="space-y-3">${activeBorrows.length > 0 ? activeBorrows.map(b => {
+                                const item = items.find(i => i.id === b.itemId);
+                                return `<div class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center border">
+                                    <div><p class="font-semibold text-gray-800">${item.name}</p><p class="text-sm text-gray-500">Batas kembali: ${new Date(b.returnDate).toLocaleString('id-ID')}</p></div>
+                                    <button data-page="return" class="nav-button-action bg-red-500 text-white text-sm font-bold py-2 px-3 rounded-lg">Kembalikan</button>
+                                </div>`
+                            }).join('') : '<p class="text-center text-gray-500 mt-4">Tidak ada peminjaman aktif.</p>'}</div>
+                        </div>
+                    </div>`;
+            };
+            
+            const renderUserBorrowPage = () => `
+                <header class="bg-white text-primary p-4 sticky top-0 z-10 shadow-md"><h1 class="text-xl font-bold text-center">Pinjam Peralatan</h1></header>
+                <div class="p-4 space-y-3">${items.length > 0 ? items.map(item => `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border">
+                        <div class="flex justify-between items-start">
+                             <div><h4 class="font-bold text-lg text-primary">${item.name}</h4>
+                                <p class="text-sm text-gray-600">Tersedia: <span class="font-semibold">${item.available} dari ${item.total}</span></p>
+                                <p class="text-xs text-gray-500 mt-1">Kelengkapan: ${item.completeness}</p></div>
+                             ${item.available > 0 ? `<button data-item-id="${item.id}" class="borrow-btn bg-primary text-white font-bold py-2 px-4 rounded-lg self-center">Pinjam</button>` 
+                             : `<span class="bg-gray-200 text-gray-600 text-xs font-semibold px-3 py-1 rounded-full self-center">Habis</span>`}
+                        </div></div>`).join('') : '<p class="text-center text-gray-500">Belum ada alat yang ditambahkan.</p>'}</div>`;
+            
+            const renderUserReturnPage = () => {
+                const userBorrows = borrowings.filter(b => b.userId === currentUser.id && b.status === 'dipinjam');
+                return `
+                    <header class="bg-white text-primary p-4 sticky top-0 z-10 shadow-md"><h1 class="text-xl font-bold text-center">Pengembalian Alat</h1></header>
+                    <div class="p-4 space-y-3">${userBorrows.length > 0 ? userBorrows.map(b => {
+                        const item = items.find(i => i.id === b.itemId);
+                        return `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-center">
+                            <div><p class="font-semibold text-gray-800">${item.name}</p><p class="text-sm text-gray-500">Dipinjam: ${new Date(b.borrowDate).toLocaleDateString('id-ID')}</p></div>
+                            <button data-borrow-id="${b.id}" class="return-item-btn bg-primary text-white font-bold py-2 px-4 rounded-lg">Kembalikan</button>
+                        </div>`}).join('') : '<p class="text-center text-gray-500 mt-4">Tidak ada alat yang sedang Anda pinjam.</p>'}</div>`;
+            };
+
+            const renderUserHistoryPage = () => {
+                const userHistory = borrowings.filter(b => b.userId === currentUser.id).sort((a, b) => new Date(b.borrowDate) - new Date(a.borrowDate));
+                return `
+                    <header class="bg-white text-primary p-4 sticky top-0 z-10 shadow-md"><h1 class="text-xl font-bold text-center">Riwayat Peminjaman</h1></header>
+                    <div class="p-4 space-y-3">${userHistory.length > 0 ? userHistory.map(b => {
+                        const item = items.find(i => i.id === b.itemId);
+                        const statuses = { dipinjam: ['Dipinjam', 'bg-yellow-100 text-yellow-800'], menunggu_validasi: ['Validasi', 'bg-blue-100 text-blue-800'], selesai: [`Selesai`, 'bg-green-100 text-green-800'] };
+                        const [statusText, statusClass] = statuses[b.status] || ['N/A', 'bg-gray-100'];
+                        return `<div class="bg-white p-4 rounded-2xl shadow-sm border flex justify-between items-start">
+                            <div><p class="font-semibold text-gray-800">${item.name}</p>
+                                <p class="text-sm text-gray-500">Tgl Pinjam: ${new Date(b.borrowDate).toLocaleString('id-ID')}</p>
+                                <p class="text-sm text-gray-500 capitalize">Keperluan: ${b.purposeType || b.activity || 'Lainnya'}</p></div>
+                            <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${statusText}</span>
+                        </div>`}).join('') : '<p class="text-center text-gray-500 mt-4">Anda belum pernah meminjam alat.</p>'}</div>`;
+            };
+            
+            const renderUserProfilePage = () => {
+                const details = currentUser.type === 'mahasiswa'
+                    ? `<p><span class="font-semibold">NIM:</span> ${currentUser.nim}</p><p><span class="font-semibold">Prodi:</span> ${currentUser.prodi}</p><p><span class="font-semibold">Angkatan:</span> ${currentUser.angkatan}</p>`
+                    : `<p><span class="font-semibold">NIP:</span> ${currentUser.nip}</p><p><span class="font-semibold">Jabatan:</span> ${currentUser.jabatan}</p>`;
+                return `
+                    <header class="bg-white text-primary p-4 sticky top-0 z-10 shadow-md"><h1 class="text-xl font-bold text-center">Profil Saya</h1></header>
+                    <div class="p-6">
+                        <div class="bg-primary text-white p-6 rounded-2xl text-center shadow-lg">
+                            <i data-lucide="user-circle-2" class="w-20 h-20 mx-auto text-secondary"></i>
+                            <h2 class="text-2xl font-bold mt-2">${currentUser.name}</h2>
+                            <p class="text-yellow-200 capitalize">${currentUser.type}</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-2xl shadow-sm mt-6 space-y-2 text-gray-700 border">${details}</div>
+                        <button id="userLogoutBtn" class="w-full mt-6 bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition flex items-center justify-center">
+                             <i data-lucide="log-out" class="w-5 h-5 mr-2"></i>Logout</button>
+                    </div>`;
+            };
+            
+            const handleBorrow = (itemId) => {
+                const item = items.find(i => i.id == itemId);
+                if (!item) return;
+
+                let purposeHtml = '';
+                const userType = currentUser.type;
+                if (userType === 'mahasiswa') purposeHtml = `<div><label class="block text-sm font-medium">Keperluan</label><select id="borrowPurposeSelector" class="mt-1 w-full p-3 border rounded-lg"><option value="kuliah">Untuk Mata Kuliah</option><option value="lainnya">Lainnya</option></select></div><div id="borrowDetailsContainer" class="space-y-4 mt-4"></div>`;
+                else if (userType === 'dosen') purposeHtml = `<div><label class="block text-sm font-medium">Keperluan</label><select id="borrowPurposeSelector" class="mt-1 w-full p-3 border rounded-lg"><option value="mengajar">Untuk Mengajar</option><option value="lainnya">Lainnya</option></select></div><div id="borrowDetailsContainer" class="space-y-4 mt-4"></div>`;
+                else if (userType === 'pegawai') purposeHtml = `<div><label class="block text-sm font-medium">Nama Kegiatan</label><input type="text" id="borrowActivity" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Lokasi Kegiatan</label><input type="text" id="borrowLocation" required class="mt-1 w-full p-3 border rounded-lg"></div>`;
+                
+                showModal(`
+                    <div id="borrowModal" class="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4 overflow-y-auto opacity-0 transition-opacity duration-300">
+                        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md m-auto">
+                            <div class="p-4 border-b flex justify-between items-center"><h3 class="text-xl font-semibold text-primary">Form Peminjaman</h3><button onclick="document.dispatchEvent(new CustomEvent('closeModal'))"><i data-lucide="x" class="w-6 h-6"></i></button></div>
+                            <form id="borrowForm" class="p-6 space-y-4">
+                                <input type="hidden" id="borrowItemId" value="${item.id}">
+                                <h4 class="text-lg font-bold text-gray-800 text-center mb-4">${item.name}</h4>
+                                <div><label class="block text-sm font-medium">Jumlah</label><input type="number" id="borrowQuantity" value="1" min="1" max="${item.available}" class="mt-1 w-full p-3 border rounded-lg"></div>
+                                ${purposeHtml}
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div><label class="block text-sm font-medium">Waktu Pinjam</label><input type="datetime-local" id="borrowDate" required class="mt-1 w-full p-3 border rounded-lg"></div>
+                                    <div><label class="block text-sm font-medium">Batas Kembali</label><input type="datetime-local" id="returnDate" required class="mt-1 w-full p-3 border rounded-lg"></div>
+                                </div>
+                                <button type="submit" class="w-full bg-secondary text-primary font-bold py-3 px-4 rounded-lg hover:bg-secondary-dark">Ajukan Peminjaman</button>
+                            </form>
+                        </div>
+                    </div>`);
+                const purposeSelector = document.getElementById('borrowPurposeSelector');
+                if (purposeSelector) {
+                    purposeSelector.onchange = (e) => renderBorrowDetailsFields(e.target.value, userType);
+                    renderBorrowDetailsFields(purposeSelector.value, userType);
+                }
+            };
+            
+             const renderBorrowDetailsFields = (purpose, userType) => {
+                const container = document.getElementById('borrowDetailsContainer');
+                if (!container) return;
+                let html = '';
+                if (userType === 'mahasiswa') {
+                    if (purpose === 'kuliah') html = `<div><label class="block text-sm font-medium">Mata Kuliah</label><input type="text" id="borrowCourse" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Dosen Pengampu</label><input type="text" id="borrowLecturer" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Kelas</label><input type="text" id="borrowClass" required class="mt-1 w-full p-3 border rounded-lg"></div>`;
+                    else html = `<div><label class="block text-sm font-medium">Deskripsi Keperluan</label><input type="text" id="borrowDescription" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Lokasi Penggunaan</label><input type="text" id="borrowLocation" required class="mt-1 w-full p-3 border rounded-lg"></div>`;
+                } else if (userType === 'dosen') {
+                    if (purpose === 'mengajar') html = `<div><label class="block text-sm font-medium">Mata Kuliah</label><input type="text" id="borrowCourse" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Kelas</label><input type="text" id="borrowClass" required class="mt-1 w-full p-3 border rounded-lg"></div>`;
+                    else html = `<div><label class="block text-sm font-medium">Deskripsi Keperluan</label><input type="text" id="borrowDescription" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Lokasi</label><input type="text" id="borrowLocation" required class="mt-1 w-full p-3 border rounded-lg"></div>`;
+                }
+                container.innerHTML = html;
+            };
+
+            const handleBorrowSubmit = (e) => {
+                const itemId = parseInt(document.getElementById('borrowItemId').value);
+                const quantity = parseInt(document.getElementById('borrowQuantity').value);
+                const item = items.find(i => i.id === itemId);
+
+                if (quantity > item.available) return showNotification('Gagal', `Jumlah peminjaman melebihi stok tersedia (${item.available}).`, false);
+
+                const newBorrowing = { id: Date.now(), itemId, quantity, userId: currentUser.id, borrowDate: document.getElementById('borrowDate').value, returnDate: document.getElementById('returnDate').value, status: 'dipinjam' };
+                const userType = currentUser.type;
+                if (userType === 'mahasiswa' || userType === 'dosen') {
+                    const purpose = document.getElementById('borrowPurposeSelector').value;
+                    newBorrowing.purposeType = purpose;
+                    if (purpose === 'kuliah' || purpose === 'mengajar') Object.assign(newBorrowing, { course: document.getElementById('borrowCourse').value, class: document.getElementById('borrowClass').value, ...(userType === 'mahasiswa' && { lecturer: document.getElementById('borrowLecturer').value }) });
+                    else Object.assign(newBorrowing, { description: document.getElementById('borrowDescription').value, location: document.getElementById('borrowLocation').value });
+                } else Object.assign(newBorrowing, { activity: document.getElementById('borrowActivity').value, location: document.getElementById('borrowLocation').value });
+                
+                borrowings.push(newBorrowing);
+                item.available -= quantity;
+                saveData();
+                closeModal();
+                showNotification('Berhasil', 'Peminjaman Anda telah dicatat.');
+                renderUserPage('history');
+            };
+
+            const showReturnForm = (borrowId) => {
+                const borrowing = borrowings.find(b => b.id == borrowId);
+                const item = items.find(i => i.id === borrowing.itemId);
+                showModal(`
+                     <div id="returnModal" class="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4 overflow-y-auto opacity-0 transition-opacity duration-300">
+                        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md m-auto">
+                           <div class="p-4 border-b flex justify-between items-center"><h3 class="text-xl font-semibold text-primary">Form Pengembalian</h3><button onclick="document.dispatchEvent(new CustomEvent('closeModal'))"><i data-lucide="x" class="w-6 h-6"></i></button></div>
+                           <form id="returnForm" class="p-6 space-y-4">
+                               <input type="hidden" name="returnBorrowId" value="${borrowId}">
+                               <h4 class="text-lg font-bold text-gray-800 text-center mb-4">${item.name} (Jumlah: ${borrowing.quantity})</h4>
+                               <div><label class="block text-sm font-medium">Kondisi Alat</label><select name="returnCondition" required class="mt-1 w-full p-3 border rounded-lg"><option value="Baik">Baik</option><option value="Rusak Ringan">Rusak Ringan</option><option value="Rusak Berat">Rusak Berat</option><option value="Hilang">Hilang</option></select></div>
+                               <div><label class="block text-sm font-medium">Keterangan (Opsional)</label><textarea name="returnNotes" rows="2" class="mt-1 w-full p-3 border rounded-lg"></textarea></div>
+                               <div><label class="block text-sm font-medium">Bukti Pengembalian (Simulasi)</label><input type="text" name="returnProof" placeholder="cth: foto_alat.jpg" required class="mt-1 w-full p-3 border rounded-lg"></div>
+                               <button type="submit" class="w-full bg-primary text-white font-bold py-3 px-4 rounded-lg hover:bg-primary-dark">Ajukan Pengembalian</button>
+                           </form>
+                       </div>
+                   </div>`);
+            };
+            
+            const handleReturnSubmit = (e) => {
+                const { returnBorrowId, returnCondition, returnNotes, returnProof } = Object.fromEntries(new FormData(e.target));
+                const borrowing = borrowings.find(b => b.id == returnBorrowId);
+                if (borrowing) {
+                    Object.assign(borrowing, { status: 'menunggu_validasi', userReturnDate: new Date().toISOString(), returnCondition, returnNotes, returnProof });
+                    saveData();
+                    closeModal();
+                    showNotification('Berhasil', 'Pengajuan pengembalian dikirim.');
+                    renderUserPage('history');
+                }
+            };
+            
+            // ===== FUNGSI RENDER TAMPILAN ADMIN =====
+            const renderAdminDashboard = () => {
+                document.getElementById('adminName').textContent = currentUser.name;
+                renderAdminPage('input');
+            };
+            
+            const renderAdminPage = (page) => {
+                document.querySelectorAll('.admin-tab-link').forEach(link => {
+                    link.classList.toggle('text-primary', link.dataset.tab === page);
+                    link.classList.toggle('border-primary', link.dataset.tab === page);
+                    link.classList.toggle('text-gray-500', link.dataset.tab !== page);
+                    link.classList.toggle('border-transparent', link.dataset.tab !== page);
+                });
+                document.querySelectorAll('.admin-content-panel').forEach(content => content.classList.add('hidden'));
+                const contentId = `adminContent${page.charAt(0).toUpperCase() + page.slice(1)}`;
+                const contentPanel = document.getElementById(contentId);
+                
+                const pages = {
+                    adminContentInput: renderAdminInput,
+                    adminContentManage: renderAdminManage,
+                    adminContentValidation: renderAdminValidation,
+                    adminContentHistory: renderAdminHistory,
+                };
+
+                if (pages[contentId]) {
+                    contentPanel.innerHTML = pages[contentId]();
+                    contentPanel.classList.remove('hidden');
+                    lucide.createIcons();
+                }
+                
+                const pendingCount = borrowings.filter(b => b.status === 'menunggu_validasi').length;
+                const badge = document.getElementById('validation-badge');
+                if (pendingCount > 0) { badge.textContent = pendingCount; badge.classList.remove('hidden'); } 
+                else { badge.classList.add('hidden'); }
+
+                if (page === 'history') {
+                    populateItemFilter();
+                    renderAdminBorrowingHistory();
+                }
+            };
+
+            const renderAdminInput = () => `<h3 class="text-lg font-semibold text-gray-800 mb-4">Tambah Data Alat Baru</h3><form id="addItemForm" class="space-y-4"><div><label class="block text-sm font-medium">Nama Alat</label><input type="text" name="itemName" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Jumlah Total</label><input type="number" name="itemTotal" min="1" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Kelengkapan</label><input type="text" name="itemCompleteness" required class="mt-1 w-full p-3 border rounded-lg"></div><div><label class="block text-sm font-medium">Deskripsi (Opsional)</label><textarea name="itemDescription" rows="3" class="mt-1 w-full p-3 border rounded-lg"></textarea></div><button type="submit" class="w-full bg-secondary text-primary font-bold py-3 px-4 rounded-lg hover:bg-secondary-dark">Tambah Alat</button></form>`;
+            const renderAdminManage = () => `<h3 class="text-lg font-semibold text-gray-800 mb-4">Manajemen Data Alat</h3><div id="adminItemList" class="space-y-3">${items.length > 0 ? items.map(i => `<div class="bg-white p-3 rounded-2xl shadow-sm border flex justify-between items-center"><div><p class="font-semibold">${i.name}</p><p class="text-sm text-gray-500">Stok: ${i.available}/${i.total}</p></div><button class="delete-item-btn p-2 text-red-600 hover:bg-red-100 rounded-full" data-item-id="${i.id}"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>`).join('') : '<p class="text-center text-gray-500">Belum ada alat.</p>'}</div>`;
+            const renderAdminValidation = () => {
+                const pending = borrowings.filter(b => b.status === 'menunggu_validasi');
+                return `<h3 class="text-lg font-semibold text-gray-800 mb-4">Validasi Pengembalian Alat</h3><div id="adminValidationList" class="space-y-3">${pending.length > 0 ? pending.map(b => {
+                    const item = items.find(i => i.id === b.itemId);
+                    const user = users.find(u => u.id === b.userId);
+                    return `<div class="bg-white p-3 rounded-2xl shadow-sm border space-y-2"><p class="font-semibold">${item.name}<span class="font-normal text-sm"> - oleh ${user.name}</span></p><div class="text-xs space-y-1 text-gray-600 border-t pt-2"><p><b>Tgl Kembali:</b> ${new Date(b.userReturnDate).toLocaleString('id-ID')}</p><p><b>Kondisi:</b><span class="font-semibold"> ${b.returnCondition}</span></p><p><b>Bukti:</b> ${b.returnProof || '-'}</p></div><button data-borrow-id="${b.id}" class="validate-return-btn w-full mt-2 bg-green-600 text-white font-bold py-2 px-3 rounded-lg">Validasi & Selesaikan</button></div>`;
+                }).join('') : '<p class="text-center text-gray-500">Tidak ada pengembalian untuk divalidasi.</p>'}</div>`;
+            };
+            const renderAdminHistory = () => `<h3 class="text-lg font-semibold text-gray-800 mb-4">Riwayat Peminjam</h3><div class="bg-gray-50 p-4 rounded-2xl border space-y-3"><div class="grid grid-cols-2 gap-2 text-sm"><select id="historyUserTypeFilter" class="w-full p-2 border rounded-lg"><option value="">Semua User</option><option value="mahasiswa">Mahasiswa</option><option value="dosen">Dosen</option><option value="pegawai">Pegawai</option></select><select id="historyStatusFilter" class="w-full p-2 border rounded-lg"><option value="">Semua Status</option><option value="dipinjam">Dipinjam</option><option value="menunggu_validasi">Validasi</option><option value="selesai">Selesai</option></select><div class="col-span-2"><input type="date" id="historyDateFilter" class="w-full p-2 border rounded-lg"></div><div class="col-span-2"><select id="historyItemFilter" class="w-full p-2 border rounded-lg"><option value="">Semua Alat</option></select></div></div><button id="printReportBtn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 flex items-center justify-center"><i data-lucide="printer" class="w-4 h-4 mr-2"></i>Cetak Laporan</button></div><div id="adminBorrowingHistory" class="space-y-3 mt-4"></div>`;
+            
+            const populateItemFilter = () => {
+                const filter = document.getElementById('historyItemFilter');
+                if (!filter) return;
+                filter.innerHTML = '<option value="">Semua Alat</option>';
+                items.forEach(item => filter.innerHTML += `<option value="${item.id}">${item.name}</option>`);
+            };
+
+            const getFilteredHistoryData = () => {
+                 const filters = {
+                    userType: document.getElementById('historyUserTypeFilter').value,
+                    status: document.getElementById('historyStatusFilter').value,
+                    item: document.getElementById('historyItemFilter').value,
+                    date: document.getElementById('historyDateFilter').value,
+                };
+                
+                return borrowings.filter(b => 
+                    (!filters.status || b.status === filters.status) &&
+                    (!filters.item || b.itemId == filters.item) &&
+                    (!filters.date || new Date(b.borrowDate).toISOString().slice(0, 10) === filters.date) &&
+                    (!filters.userType || users.find(u => u.id === b.userId)?.type === filters.userType)
+                ).sort((a, b) => new Date(b.borrowDate) - new Date(a.borrowDate));
+            }
+
+            const renderAdminBorrowingHistory = () => {
+                const historyDiv = document.getElementById('adminBorrowingHistory');
+                if (!historyDiv) return;
+                
+                const filtered = getFilteredHistoryData();
+                
+                historyDiv.innerHTML = filtered.length > 0 ? filtered.map(b => {
+                    const item = items.find(i => i.id === b.itemId);
+                    const user = users.find(u => u.id === b.userId);
+                    const statuses = { dipinjam: ['Dipinjam', 'bg-yellow-100 text-yellow-800'], menunggu_validasi: ['Validasi', 'bg-blue-100 text-blue-800'], selesai: ['Selesai', 'bg-green-100 text-green-800'] };
+                    const [statusText, statusClass] = statuses[b.status];
+                    return `<div class="bg-white p-3 rounded-2xl shadow-sm border"><div class="flex justify-between items-center"><div><p class="font-semibold text-primary">${item.name}</p><p class="text-xs text-gray-600">${user.name} - <span class="capitalize">${user.type}</span></p><p class="text-xs text-gray-500">${new Date(b.borrowDate).toLocaleDateString('id-ID')}</p></div><div class="flex flex-col items-end space-y-2"><span class="text-xs font-semibold px-2 py-1 rounded-full ${statusClass}">${statusText}</span><button data-borrow-id="${b.id}" class="view-detail-btn text-xs bg-gray-200 text-gray-800 px-3 py-1 rounded-md hover:bg-gray-300">Detail</button></div></div></div>`
+                }).join('') : '<p class="text-center text-gray-500 mt-4">Tidak ada riwayat yang cocok.</p>';
+            };
+
+            const showBorrowingDetails = (borrowId) => {
+                const b = borrowings.find(br => br.id == borrowId);
+                const item = items.find(i => i.id === b.itemId);
+                const user = users.find(u => u.id === b.userId);
+                
+                let userInfo = '', purposeInfo = '', returnInfo = '';
+                if (user.type === 'mahasiswa') userInfo = `<p><b>NIM:</b> ${user.nim}</p><p><b>Prodi:</b> ${user.prodi}</p>`;
+                else userInfo = `<p><b>NIP:</b> ${user.nip}</p><p><b>Jabatan:</b> ${user.jabatan}</p>`;
+                
+                if (b.purposeType === 'kuliah') purposeInfo = `<p><b>Keperluan:</b> Mata Kuliah</p><div class="pl-2 border-l-2 ml-1 text-xs"><p><b>Detail:</b> ${b.course}, Kelas ${b.class}</p><p><b>Dosen:</b> ${b.lecturer}</p></div>`;
+                else if (b.purposeType === 'mengajar') purposeInfo = `<p><b>Keperluan:</b> Mengajar</p><div class="pl-2 border-l-2 ml-1 text-xs"><p><b>Detail:</b> ${b.course}, Kelas ${b.class}</p></div>`;
+                else if (b.activity) purposeInfo = `<p><b>Keperluan:</b> Kegiatan</p><div class="pl-2 border-l-2 ml-1 text-xs"><p><b>Detail:</b> ${b.activity}</p><p><b>Lokasi:</b> ${b.location}</p></div>`;
+                else purposeInfo = `<p><b>Keperluan:</b> Lainnya</p><div class="pl-2 border-l-2 ml-1 text-xs"><p><b>Detail:</b> ${b.description}</p><p><b>Lokasi:</b> ${b.location}</p></div>`;
+
+                if (b.status !== 'dipinjam') returnInfo = `<div class="border-t mt-2 pt-2"><h4 class="font-semibold mb-1">Info Pengembalian</h4><p><b>Kondisi:</b> ${b.returnCondition}</p><p><b>Bukti:</b> ${b.returnProof}</p><p><b>Catatan:</b> ${b.returnNotes || '-'}</p></div>`;
+
+                showModal(`
+                    <div class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+                         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md m-auto max-h-[90vh] flex flex-col">
+                            <div class="p-4 border-b flex justify-between items-center"><h3 class="text-xl font-semibold text-primary">Detail Transaksi</h3><button onclick="document.dispatchEvent(new CustomEvent('closeModal'))"><i data-lucide="x"></i></button></div>
+                            <div class="p-6 text-sm overflow-y-auto space-y-3">
+                                <div class="border-b pb-2"><h4 class="font-semibold mb-1">Info Peminjam</h4><p><b>Nama:</b> ${user.name} (<span class="capitalize">${user.type}</span>)</p>${userInfo}</div>
+                                <div class="border-b pb-2"><h4 class="font-semibold mb-1">Info Alat</h4><p><b>Nama:</b> ${item.name}</p><p><b>Jumlah:</b> ${b.quantity}</p></div>
+                                <div class="border-b pb-2"><h4 class="font-semibold mb-1">Info Peminjaman</h4><p><b>Waktu Pinjam:</b> ${new Date(b.borrowDate).toLocaleString('id-ID')}</p><p><b>Batas Kembali:</b> ${new Date(b.returnDate).toLocaleString('id-ID')}</p>${purposeInfo}</div>
+                                ${returnInfo}
+                            </div>
+                        </div>
+                    </div>`);
+            };
+            
+            // ===== FUNGSI CETAK LAPORAN PDF =====
+            const downloadHistoryAsPDF = () => {
+                const filteredData = getFilteredHistoryData();
+                if (filteredData.length === 0) {
+                    return showNotification('Gagal', 'Tidak ada data untuk dicetak.', false);
+                }
+
+                const printableContent = document.createElement('div');
+                printableContent.style.width = '210mm';
+                printableContent.style.padding = '20mm';
+                printableContent.style.color = '#000';
+
+                const tableRows = filteredData.map(b => {
+                    const item = items.find(i => i.id === b.itemId);
+                    const user = users.find(u => u.id === b.userId);
+                    return `
+                        <tr>
+                            <td>${new Date(b.borrowDate).toLocaleDateString('id-ID')}</td>
+                            <td>${user.name}</td>
+                            <td>${user.nim || user.nip}</td>
+                            <td>${item.name}</td>
+                            <td>${b.status}</td>
+                        </tr>
+                    `;
+                }).join('');
+                
+                printableContent.innerHTML = `
+                    <style>
+                        body { font-family: sans-serif; }
+                        table { width: 100%; border-collapse: collapse; font-size: 10px; }
+                        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                    </style>
+                    <div style="text-align: center; margin-bottom: 20px;">
+                        <h1 style="font-size: 18px; margin:0;">Laporan Riwayat Peminjaman dan Pengembalian Alat</h1>
+                        <p style="font-size: 12px; margin:0;">InventaJur System</p>
+                        <p style="font-size: 10px; margin-top: 5px;">Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Nama Peminjam</th>
+                                <th>NIM/NIP</th>
+                                <th>Nama Alat</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 20px; text-align: right; font-size: 12px;">
+                        <p>Total Transaksi: ${filteredData.length}</p>
+                    </div>
+                `;
+
+                document.body.appendChild(printableContent);
+                html2canvas(printableContent).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF();
+                    const imgProps = pdf.getImageProperties(imgData);
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save('laporan-peminjaman.pdf');
+                    document.body.removeChild(printableContent);
+                });
+            };
+
+            // ===== EVENT LISTENERS =====
+            const setupEventListeners = () => {
+                document.getElementById('goToLoginBtn').addEventListener('click', () => renderAuthPage('login'));
+                document.getElementById('goToRegisterBtn').addEventListener('click', () => renderAuthPage('register'));
+                document.addEventListener('closeModal', closeModal);
+
+                app.addEventListener('change', e => {
+                    if (e.target.id === 'auth-user-type') {
+                        const isLogin = e.target.closest('#authContent').querySelector('h2').textContent.includes('Login');
+                        document.getElementById('auth-form-container').innerHTML = renderAuthFormFields(isLogin, e.target.value);
+                    }
+                });
+                
+                app.addEventListener('submit', e => {
+                    e.preventDefault();
+                    if (e.target.id === 'auth-form') handleAuth(e, e.target.closest('#authContent').querySelector('h2').textContent.includes('Login'));
+                    if (e.target.id === 'borrowForm') handleBorrowSubmit(e);
+                    if (e.target.id === 'returnForm') handleReturnSubmit(e);
+                    if (e.target.id === 'addItemForm') {
+                        const { itemName, itemTotal, itemCompleteness, itemDescription } = Object.fromEntries(new FormData(e.target));
+                        items.push({ id: Date.now(), name: itemName, total: parseInt(itemTotal), available: parseInt(itemTotal), completeness: itemCompleteness, description: itemDescription });
+                        saveData();
+                        showNotification('Berhasil', 'Alat baru telah ditambahkan.');
+                        e.target.reset();
+                    }
+                });
+
+                app.addEventListener('click', e => {
+                    const button = e.target.closest('button');
+                    if (!button) return;
+                    
+                    if (button.classList.contains('back-to-splash-btn')) showPage('splash');
+                    if (button.closest('#userBottomNav')) renderUserPage(button.closest('.user-nav-link').dataset.page);
+                    if (button.classList.contains('nav-button-action')) renderUserPage(button.dataset.page);
+                    if (button.classList.contains('borrow-btn')) handleBorrow(button.dataset.itemId);
+                    if (button.classList.contains('return-item-btn')) showReturnForm(button.dataset.borrowId);
+                    if (button.id === 'userLogoutBtn' || button.id === 'adminLogoutBtn') logout();
+                    
+                    // Admin clicks
+                    if (button.closest('#adminDashboardPage')) {
+                        if(button.closest('.admin-tab-link')) renderAdminPage(button.closest('.admin-tab-link').dataset.tab);
+                        if(button.classList.contains('delete-item-btn')) showConfirm('Hapus Alat?', 'Anda yakin ingin menghapus alat ini?', () => {
+                            items = items.filter(i => i.id != button.dataset.itemId);
+                            saveData(); renderAdminPage('manage');
+                        });
+                        if(button.classList.contains('validate-return-btn')) {
+                            const borrowing = borrowings.find(b => b.id == button.dataset.borrowId);
+                            const item = items.find(i => i.id === borrowing.itemId);
+                            borrowing.status = 'selesai';
+                            borrowing.adminValidationDate = new Date().toISOString();
+                            if(borrowing.returnCondition !== 'Hilang' && borrowing.returnCondition !== 'Rusak Berat') item.available += borrowing.quantity;
+                            saveData();
+                            showNotification('Berhasil', 'Pengembalian telah divalidasi.');
+                            renderAdminPage('validation');
+                        }
+                        if (button.classList.contains('view-detail-btn')) showBorrowingDetails(button.dataset.borrowId);
+                        if (button.id === 'printReportBtn') downloadHistoryAsPDF();
+                    }
+                });
+                
+                app.addEventListener('change', e => {
+                    if (e.target.closest('#adminContentHistory')) renderAdminBorrowingHistory();
+                });
+            };
+            
+            // ===== INISIALISASI APLIKASI =====
+            const init = () => {
+                loadData();
+                setupEventListeners();
+                checkSession();
+            };
+
+            init();
+        });
+    </script>
+</body>
+</html>
+
